@@ -6,27 +6,74 @@ import "hardhat/console.sol";
 
 contract AuctionHouse {
 
-    // uint256 count = 0;
+    uint256 countTotalAuctionsDeployed = 0;
 
     struct Auction {
-        address owner;
+        address payable owner;
         uint256 createTimestamp;
         uint256 endTimestamp;
-        mapping(address => uint256) bids;
-        uint256 highestBid;
-        uint256 lowestBig;
+        uint256 startBid;
+        uint256 currentBid;
+        string ownerWithdrawSecret;
     }
 
-    event newAuction(Auction[] people);
+    //event newAuction(Auction[] auctions);
 
-    event()
+
+    event newAuction( mapping( address => Auction ) auctions );
     
     constructor() {
-        //createTime = block.timestamp;
     }
 
 
-    function addAuction () external () {
+    function addAuction (uint256 startBidMin, string ownerSecret) payable external returns ( Auction ) {
+        countTotalAuctionsDeployed += 1;
+
+        auctions[msg.sender] = new Auction(
+            msg.sender,
+            block.timestamp,
+            block.timestamp * 1 days,
+            startBidMin,
+            startBidMin,
+            ownerSecret
+        );
+
+        emit newAuction(auctions);
+
+        return auctions[msg.sender];
+    }
+
+    function bid(uint256 amount, address payable ownerAuction) payable external returns ( boolean ) {
+        require(auctions[ownerAuction], "Auction not exist for this address");
+
+        require(block.timestamp > auctions[ownerAuction].endTimestamp, "Auction is over");
+
+
+        uint256 memory currentOld = auctions[ownerAuction].currentBid;
+
+        require(amount < currentOld, "Bid is too low");
+
+        // todo transfer
+
+        auctions[ownerAuction].currentBid = amount;
+
+        return true;
+    } 
+
+    function withdraw (string secret) payable external returns ( uint256 ) {
+        require(auctions[msg.sender], "Auction not exist for your address");
+        require(block.timestamp * 1 days > auctions[msg.sender].endTimestamp, "Auction is in progress");
+        require(secret == auctions[msg.sender].ownerWithdrawSecret, "Wrong secret given");
+
+        // todo transfer
+
+        return auctions[msg.sender].currentBid;
+    }
+
+
+
+    function totalAuctionsDeployed () external returns ( uint256 ) {
+        return countTotalAuctionsDeployed;
     }
 
     // string private greeting;
